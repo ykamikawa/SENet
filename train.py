@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 from SE_ResNeXt import SE_ResNeXt
 from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
@@ -39,22 +40,27 @@ def Evaluate(sess, val_generator, test_iteration, epoch_learning_rate):
     # average accuracy
     test_acc /= test_iteration
 
-    summary = tf.Summary(value=[tf.Summary.Value(tag='test_loss', simple_value=test_loss),
-                                tf.Summary.Value(tag='test_accuracy', simple_value=test_acc)])
+    summary = tf.Summary(
+            value=[
+                tf.Summary.Value(
+                    tag='test_loss',
+                    simple_value=test_loss),
+                tf.Summary.Value(
+                    tag='test_accuracy',
+                    simple_value=test_acc)
+            ])
 
     return test_acc, test_loss, summary
 
 
-def main():
+def train(args):
     # prepare dataframe
-    df = pd.read_csv("../dataset/cookpad/train_master.tsv", delimiter="\t")
-    mask = np.random.rand(len(df)) < 0.8
-    train_df = df[mask]
-    val_df = df[~mask]
-    category_df = pd.read_csv("../dataset/cookpad/master.tsv", delimiter="\t")
+    df = pd.read_csv(args.data_list, delimiter="\t")
+    train_df, val_df = train_test_split(df, test_size=0.2)
+    category_df = pd.read_csv(args.category_list, delimiter="\t")
 
     # input params
-    image_size = 224
+    image_size = args.input_size
     img_channels = 3
 
     # optimizer params
@@ -72,22 +78,36 @@ def main():
     reduction_ratio = 4
 
     # training params
-    batch_size = 32
+    batch_size = args.batch_size
     iteration = int(len(train_df) / batch_size)
     test_iteration = int(len(val_df) / batch_size)
-    total_epochs = 100
+    total_epochs = args.epochs
     nb_classes = len(category_df)
 
 
     # batch generators
     train_datagen = DataGenerator()
-    train_generator = train_datagen.flow_from_dataframe(train_df, nb_classes, batch_size, image_size, augment=True)
+    train_generator = train_datagen.flow_from_dataframe(
+            train_df,
+            nb_classes,
+            batch_size,
+            image_size,
+            augment=True)
     val_datagen = DataGenerator()
-    val_generator = val_datagen.flow_from_dataframe(val_df, nb_classes, batch_size, image_size, augment=False)
+    val_generator = val_datagen.flow_from_dataframe(
+            val_df,
+            nb_classes,
+            batch_size,
+            image_size,
+            augment=False)
 
     # placeholders
-    x = tf.placeholder(tf.float32, shape=[None, image_size, image_size, img_channels])
-    label = tf.placeholder(tf.float32, shape=[None, class_num])
+    x = tf.placeholder(
+            tf.float32,
+            shape=[None, image_size, image_size, img_channels])
+    label = tf.placeholder(
+            tf.float32,
+            shape=[None, nb_classes])
 
     # training flag: True or False
     training_flag = tf.placeholder(tf.bool)
@@ -95,18 +115,30 @@ def main():
     # learning rate
     learning_rate = tf.placeholder(tf.float32, name='learning_rate')
 
-    logits = SE_ResNeXt(x, training=training_flag).model
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=logits))
+    # build model
+    if args.architecture == "SE_ResNeXt":
+        logits = SE_ResNeXt(x, training=training_flag).model
+    elif args.architecture == "SE_Inception_v4":
+        logits = SE_Inception_v4(x, training=training_flag).model
+    elif args.architecture == "SE_Inception_resnet_v2":
+        logits = SE_Inception_resnet_v2(x, training=training_flag).model
 
+    # loss function
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=logits))
     l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in tf.trainable_variables()])
+
+    # optimizer
     optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum, use_nesterov=True)
     train_op = optimizer.minimize(loss + l2_loss * weight_decay)
 
+    # caluc accuracy
     correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(label, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+    # trained model saver
     saver = tf.train.Saver(tf.global_variables())
 
+    # run training
     with tf.Session() as sess:
         ckpt = tf.train.get_checkpoint_state('./model')
         if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
@@ -114,7 +146,8 @@ def main():
         else:
             sess.run(tf.global_variables_initializer())
 
-        summary_writer = tf.summary.FileWriter('./logs', sess.graph)
+        log_dir = "./logs/" + args.architecture
+        summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
 
         epoch_learning_rate = init_learning_rate
         for epoch in range(1, total_epochs + 1):
@@ -135,7 +168,9 @@ def main():
                     training_flag: True
                 }
 
-                _, batch_loss = sess.run([train, cost], feed_dict=train_feed_dict)
+                _, batch_loss = sess.run(
+                        [train_op, loss],
+                        feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
 
                 train_loss += batch_loss
@@ -148,10 +183,20 @@ def main():
             # average accuracy
             train_acc /= iteration
 
-            train_summary = tf.Summary(value=[tf.Summary.Value(tag='train_loss', simple_value=train_loss),
-                                              tf.Summary.Value(tag='train_accuracy', simple_value=train_acc)])
+            train_summary = tf.Summary(
+                    value=[
+                        tf.Summary.Value(
+                            tag='train_loss',
+                            simple_value=train_loss),
+                        tf.Summary.Value(
+                            tag='train_accuracy',
+                            simple_value=train_acc)])
 
-            test_acc, test_loss, test_summary = Evaluate(sess, val_generator, test_iteration, epoch_learning_rate)
+            test_acc, test_loss, test_summary = Evaluate(
+                    sess,
+                    val_generator,
+                    test_iteration,
+                    epoch_learning_rate)
 
             summary_writer.add_summary(summary=train_summary, global_step=epoch)
             summary_writer.add_summary(summary=test_summary, global_step=epoch)
@@ -164,4 +209,58 @@ def main():
             with open('logs.txt', 'a') as f:
                 f.write(line)
 
-            saver.save(sess=sess, save_path='./model/ResNeXt.ckpt')
+            save_path = "./model/" + args.architecture + ".ckpt"
+            saver.save(sess=sess, save_path=save_path)
+
+
+if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(
+        description='SENet')
+    argparser.add_argument(
+        '-d',
+        '--data_list',
+        type=str,
+        default="../dataset/cookpad/train_master.tsv",
+        help='path to data list')
+    argparser.add_argument(
+        "-c",
+        '--category_list',
+        type=str,
+        default="../dataset/cookpad/master.tsv",
+        help='path to data list')
+    argparser.add_argument(
+        '-e',
+        '--epochs',
+        type=int,
+        default=30,
+        help='number of epochs')
+    argparser.add_argument(
+        "-s",
+        '--input_size',
+        type=int,
+        default=224,
+        help='input size')
+    argparser.add_argument(
+        "-b",
+        '--batch_size',
+        default=32,
+        type=int,
+        help='batch size')
+    argparser.add_argument(
+        '-a',
+        '--architecture',
+        type=str,
+        default="SE_ResNeXt",
+        help='model architecture')
+    argparser.add_argument(
+        "-g",
+        '--gpu_id',
+        default="0",
+        type=str,
+        help='gpu id')
+    args = argparser.parse_args()
+
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+
+    train(args)
