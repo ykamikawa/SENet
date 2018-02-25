@@ -57,7 +57,7 @@ def Evaluate(sess, val_generator, test_iteration, epoch_learning_rate):
     return test_acc, test_loss, summary
 
 
-def train(args):
+def Train(args):
     # prepare dataframe
     df = pd.read_csv(args.data_list, delimiter="\t")
     train_df, val_df = train_test_split(df, test_size=0.2)
@@ -96,7 +96,7 @@ def train(args):
             nb_classes,
             batch_size,
             image_size,
-            augment=False)
+            augment=True)
     val_datagen = DataGenerator()
     val_generator = val_datagen.flow_from_dataframe(
             val_df,
@@ -130,9 +130,17 @@ def train(args):
                 depth=depth,
                 ratio=reduction_ratio).model
     elif args.architecture == "SE_Inception_v4":
-        logits = SE_Inception_v4(x, training=training_flag).model
+        logits = SE_Inception_v4(
+                x,
+                nb_classes=nb_classes,
+                training=training_flag
+                ratio=reduction_ratio).model
     elif args.architecture == "SE_Inception_resnet_v2":
-        logits = SE_Inception_resnet_v2(x, training=training_flag).model
+        logits = SE_Inception_resnet_v2(
+                x,
+                nb_classes,
+                training=training_flag,
+                ratio=reduction_ratio).model
 
     # loss function
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=logits))
@@ -284,4 +292,4 @@ if __name__ == '__main__':
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
-    train(args)
+    Train(args)

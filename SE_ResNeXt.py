@@ -8,7 +8,13 @@ import numpy as np
 
 def conv_layer(input, filter, kernel, stride, padding='SAME', layer_name="conv"):
     with tf.name_scope(layer_name):
-        network = tf.layers.conv2d(inputs=input, use_bias=False, filters=filter, kernel_size=kernel, strides=stride, padding=padding)
+        network = tf.layers.conv2d(
+                inputs=input,
+                use_bias=False,
+                filters=filter,
+                kernel_size=kernel,
+                strides=stride,
+                padding=padding)
         return network
 
 def Global_Average_Pooling(x):
