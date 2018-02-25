@@ -220,7 +220,8 @@ def Train(args):
             print(line)
 
             # logs text
-            with open('logs.txt', 'a') as f:
+            logs_text = args.architecture + "_logs.txt"
+            with open(logs_text, 'a') as f:
                 f.write(line)
 
             # save ckpt
