@@ -5,10 +5,14 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import argparse
+import sys
+from tqdm import tqdm
 
-from SE_ResNeXt import SE_ResNeXt
-from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
-from SE_Inception_v4 import SE_Inception_v4
+#from SE_ResNeXt import SE_ResNeXt
+#from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
+#from SE_Inception_v4 import SE_Inception_v4
+from modelbulder import SE_ResNeXt
 
 from generator import DataGenerator
 
@@ -82,7 +86,7 @@ def train(args):
     iteration = int(len(train_df) / batch_size)
     test_iteration = int(len(val_df) / batch_size)
     total_epochs = args.epochs
-    nb_classes = len(category_df)
+    nb_classes = len(category_df) + 1
 
 
     # batch generators
@@ -92,7 +96,7 @@ def train(args):
             nb_classes,
             batch_size,
             image_size,
-            augment=True)
+            augment=False)
     val_datagen = DataGenerator()
     val_generator = val_datagen.flow_from_dataframe(
             val_df,
@@ -117,7 +121,14 @@ def train(args):
 
     # build model
     if args.architecture == "SE_ResNeXt":
-        logits = SE_ResNeXt(x, training=training_flag).model
+        logits = SE_ResNeXt(
+                x,
+                nb_classes=nb_classes,
+                training=training_flag,
+                blocks=blocks,
+                cardinality=cardinality,
+                depth=depth,
+                ratio=reduction_ratio).model
     elif args.architecture == "SE_Inception_v4":
         logits = SE_Inception_v4(x, training=training_flag).model
     elif args.architecture == "SE_Inception_resnet_v2":
@@ -138,17 +149,25 @@ def train(args):
     # trained model saver
     saver = tf.train.Saver(tf.global_variables())
 
-    # run training
+    # session
     with tf.Session() as sess:
-        ckpt = tf.train.get_checkpoint_state('./model')
+        # ckpt config
+        ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
+        save_dir = "./model/" + args.architecture + "_" + str(ckpt_counter + 1)
+        save_path = save_dir + "/" + args.architecture + ".ckpt"
+        ckpt = tf.train.get_checkpoint_state("./model/" + args.architecture + "_" + str(ckpt_counter))
         if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
             sess.run(tf.global_variables_initializer())
 
-        log_dir = "./logs/" + args.architecture
+
+        # log config
+        log_counter = len([log_dir for log_dir in os.listdir("./logs") if args.architecture in log_dir])
+        log_dir = "./logs/" + args.architecture + "_" + str(log_counter + 1)
         summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
 
+        # training
         epoch_learning_rate = init_learning_rate
         for epoch in range(1, total_epochs + 1):
             if epoch % 30 == 0 :
@@ -158,7 +177,7 @@ def train(args):
             train_acc = 0.0
             train_loss = 0.0
 
-            for step in range(1, iteration + 1):
+            for step in tqdm(range(1, iteration + 1)):
 
                 batch_x, batch_y = next(train_generator)
                 train_feed_dict = {
@@ -172,6 +191,9 @@ def train(args):
                         [train_op, loss],
                         feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
+
+                sys.stdout.write("\r step: {}, loss: {}, acc: {}".format(step, batch_loss, batch_acc))
+                sys.stdout.flush()
 
                 train_loss += batch_loss
                 train_acc += batch_acc
@@ -209,7 +231,6 @@ def train(args):
             with open('logs.txt', 'a') as f:
                 f.write(line)
 
-            save_path = "./model/" + args.architecture + ".ckpt"
             saver.save(sess=sess, save_path=save_path)
 
 
@@ -238,12 +259,12 @@ if __name__ == '__main__':
         "-s",
         '--input_size',
         type=int,
-        default=224,
+        default=128,
         help='input size')
     argparser.add_argument(
         "-b",
         '--batch_size',
-        default=32,
+        default=8,
         type=int,
         help='batch size')
     argparser.add_argument(

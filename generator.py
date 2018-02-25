@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 from keras.utils import np_utils
-from keras.preprocessing.image import ImageDataGenerator, img_to_array
+from keras.preprocessing.image import img_to_array
 from scipy.ndimage.interpolation import rotate
 from scipy.misc import imresize
 
@@ -52,21 +52,20 @@ def scale_augmentation(image, scale_range=(256, 400), crop_size=224):
     return image
 
 
-class DataGenerator(ImageDataGenerator):
-    def __init__(self, *args, **kwargs):
-        super(DataGenerator, self).__init__(*args, **kwargs)
+class DataGenerator():
+    def __init__(self):
         self.reset()
 
     def reset(self):
         self.images = []
         self.labels = []
 
-    def flow_from_dataframe(self, df, nb_classes=55, batch_size=32, image_size=224, augment=True):
+    def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, augment=True):
         dir_path = "../dataset/cookpad/train/"
         while True:
             for i, row in df.iterrows():
                 img = cv2.imread(dir_path + row.file_name)[:, :, ::-1]
-                img = cv2.resize(img, (224, 224))
+                img = cv2.resize(img, (image_size, image_size))
                 array_img = img_to_array(img)/255
 
                 if augment:
@@ -76,6 +75,7 @@ class DataGenerator(ImageDataGenerator):
 
                 label = row.category_id
                 label = np_utils.to_categorical(label, num_classes=nb_classes)
+                label = np.reshape(label, [nb_classes])
                 self.labels.append(label)
 
                 if len(self.images) == batch_size:
