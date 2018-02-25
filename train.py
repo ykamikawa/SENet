@@ -166,10 +166,7 @@ def Train(args):
                 _, batch_loss = sess.run([train_op, loss], feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
 
-                # get step elapsed time
-                elapsed_step = datetime.now() - start_epoch
-
-                sys.stdout.write("\r epoch: {} step: {}/{} loss: {} acc: {} elapsed: {}".format(epoch, step, iteration, batch_loss, batch_acc, str(elapsed_step)))
+                sys.stdout.write("\r epoch: {} step: {}/{} loss: {} acc: {}".format(epoch, step, iteration, batch_loss, batch_acc))
                 sys.stdout.flush()
 
                 train_loss += batch_loss
@@ -236,7 +233,7 @@ def Train(args):
             print(line)
 
             # logs text
-            logs_text = "./log_txt/" + args.architecture + start_time + "_logs.txt"
+            logs_text = "./logs_txt/" + args.architecture + start_time + "_logs.txt"
             with open(logs_text, 'a') as f:
                 f.write(line)
 
