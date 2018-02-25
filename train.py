@@ -16,7 +16,7 @@ from SE_Inception_v4 import SE_Inception_v4
 from generator import DataGenerator
 
 
-def Evaluate(sess, val_generator, test_iteration, epoch_learning_rate):
+def Evaluate(sess, x, label, val_generator, test_iteration, epoch_learning_rate):
     test_acc = 0.0
     test_loss = 0.0
     test_pre_index = 0
@@ -223,6 +223,8 @@ def Train(args):
 
             test_acc, test_loss, test_summary = Evaluate(
                     sess,
+                    x,
+                    label,
                     val_generator,
                     test_iteration,
                     epoch_learning_rate)
