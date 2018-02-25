@@ -9,10 +9,9 @@ import argparse
 import sys
 from tqdm import tqdm
 
-#from SE_ResNeXt import SE_ResNeXt
-#from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
-#from SE_Inception_v4 import SE_Inception_v4
-from modelbulder import SE_ResNeXt
+from SE_ResNeXt import SE_ResNeXt
+from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
+from SE_Inception_v4 import SE_Inception_v4
 
 from generator import DataGenerator
 
@@ -133,7 +132,7 @@ def Train(args):
         logits = SE_Inception_v4(
                 x,
                 nb_classes=nb_classes,
-                training=training_flag
+                training=training_flag,
                 ratio=reduction_ratio).model
     elif args.architecture == "SE_Inception_resnet_v2":
         logits = SE_Inception_resnet_v2(
@@ -185,7 +184,7 @@ def Train(args):
             train_acc = 0.0
             train_loss = 0.0
 
-            for step in tqdm(range(1, iteration + 1)):
+            for step in range(1, iteration + 1):
 
                 batch_x, batch_y = next(train_generator)
                 train_feed_dict = {
@@ -200,7 +199,7 @@ def Train(args):
                         feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
 
-                sys.stdout.write("\r step: {}, loss: {}, acc: {}".format(step, batch_loss, batch_acc))
+                sys.stdout.write("\r step: {}/{}, loss: {}, acc: {}".format(step, iteration, batch_loss, batch_acc))
                 sys.stdout.flush()
 
                 train_loss += batch_loss

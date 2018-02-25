@@ -5,18 +5,6 @@ from tensorflow.contrib.layers import batch_norm, flatten
 from tensorflow.contrib.framework import arg_scope
 import numpy as np
 
-weight_decay = 0.0005
-momentum = 0.9
-
-init_learning_rate = 0.1
-reduction_ratio = 4
-
-batch_size = 128
-iteration = 391
-
-test_iteration = 10
-
-total_epochs = 100
 
 def conv_layer(input, filter, kernel, stride=1, padding='SAME', layer_name="conv"):
     with tf.name_scope(layer_name):
