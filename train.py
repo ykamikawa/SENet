@@ -16,46 +16,6 @@ from SE_Inception_v4 import SE_Inception_v4
 from generator import DataGenerator
 
 
-def Evaluate(sess, x, label, val_generator, test_iteration, epoch_learning_rate):
-    test_acc = 0.0
-    test_loss = 0.0
-    test_pre_index = 0
-    add = 1000
-
-    for it in range(test_iteration):
-
-        test_batch_x, test_batch_y = next(val_generator)
-
-        test_feed_dict = {
-            x: test_batch_x,
-            label: test_batch_y,
-            learning_rate: epoch_learning_rate,
-            training_flag: False
-        }
-
-        loss_, acc_ = sess.run([cost, accuracy], feed_dict=test_feed_dict)
-
-        test_loss += loss_
-        test_acc += acc_
-
-    # average loss
-    test_loss /= test_iteration
-    # average accuracy
-    test_acc /= test_iteration
-
-    summary = tf.Summary(
-            value=[
-                tf.Summary.Value(
-                    tag='test_loss',
-                    simple_value=test_loss),
-                tf.Summary.Value(
-                    tag='test_accuracy',
-                    simple_value=test_acc)
-            ])
-
-    return test_acc, test_loss, summary
-
-
 def Train(args):
     # prepare dataframe
     df = pd.read_csv(args.data_list, delimiter="\t")
@@ -156,7 +116,7 @@ def Train(args):
     # trained model saver
     saver = tf.train.Saver(tf.global_variables())
 
-    # session
+    # start session
     with tf.Session() as sess:
         # ckpt config
         ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
@@ -167,7 +127,6 @@ def Train(args):
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
             sess.run(tf.global_variables_initializer())
-
 
         # log config
         log_counter = len([log_dir for log_dir in os.listdir("./logs") if args.architecture in log_dir])
@@ -185,18 +144,14 @@ def Train(args):
             train_loss = 0.0
 
             for step in range(1, iteration + 1):
-
                 batch_x, batch_y = next(train_generator)
                 train_feed_dict = {
                     x: batch_x,
                     label: batch_y,
                     learning_rate: epoch_learning_rate,
-                    training_flag: True
-                }
+                    training_flag: True}
 
-                _, batch_loss = sess.run(
-                        [train_op, loss],
-                        feed_dict=train_feed_dict)
+                _, batch_loss = sess.run([train_op, loss], feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
 
                 sys.stdout.write("\r step: {}/{}, loss: {}, acc: {}".format(step, iteration, batch_loss, batch_acc))
@@ -212,6 +167,7 @@ def Train(args):
             # average accuracy
             train_acc /= iteration
 
+            # write train summary
             train_summary = tf.Summary(
                     value=[
                         tf.Summary.Value(
@@ -221,25 +177,53 @@ def Train(args):
                             tag='train_accuracy',
                             simple_value=train_acc)])
 
-            test_acc, test_loss, test_summary = Evaluate(
-                    sess,
-                    x,
-                    label,
-                    val_generator,
-                    test_iteration,
-                    epoch_learning_rate)
+            # validation
+            test_acc = 0.0
+            test_loss = 0.0
+            test_pre_index = 0
+            add = 1000
+            for it in range(test_iteration):
+                test_batch_x, test_batch_y = next(val_generator)
+                test_feed_dict = {
+                    x: test_batch_x,
+                    label: test_batch_y,
+                    learning_rate: epoch_learning_rate,
+                    training_flag: False}
 
+                loss_, acc_ = sess.run([loss, accuracy], feed_dict=test_feed_dict)
+                test_loss += loss_
+                test_acc += acc_
+
+            # average loss
+            test_loss /= test_iteration
+            # average accuracy
+            test_acc /= test_iteration
+
+            # write validation summary
+            summary = tf.Summary(
+                    value=[
+                        tf.Summary.Value(
+                            tag='test_loss',
+                            simple_value=test_loss),
+                        tf.Summary.Value(
+                            tag='test_accuracy',
+                            simple_value=test_acc)])
+
+            # write summary
             summary_writer.add_summary(summary=train_summary, global_step=epoch)
             summary_writer.add_summary(summary=test_summary, global_step=epoch)
             summary_writer.flush()
 
+            # stdout line
             line = "epoch: %d/%d, train_loss: %.4f, train_acc: %.4f, test_loss: %.4f, test_acc: %.4f \n" % (
                 epoch, total_epochs, train_loss, train_acc, test_loss, test_acc)
             print(line)
 
+            # logs text
             with open('logs.txt', 'a') as f:
                 f.write(line)
 
+            # save ckpt
             saver.save(sess=sess, save_path=save_path)
 
 
