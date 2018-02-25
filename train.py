@@ -200,7 +200,7 @@ def Train(args):
             test_acc /= test_iteration
 
             # write validation summary
-            summary = tf.Summary(
+            test_summary = tf.Summary(
                     value=[
                         tf.Summary.Value(
                             tag='test_loss',
