@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
-import cv2
 import numpy as np
 import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import argparse
 import sys
-from tqdm import tqdm
+from datetime import datetime
 
 from SE_ResNeXt import SE_ResNeXt
 from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
@@ -125,10 +124,13 @@ def Train(args):
 
     # start session
     with tf.Session() as sess:
+        # get time
+        start_time = str(datetime.now())
+
         # ckpt config
         ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
         save_dir = "./model/" + args.architecture + "_" + str(ckpt_counter + 1)
-        save_path = save_dir + "/" + args.architecture + ".ckpt"
+        save_path = save_dir + "/" + args.architecture + start_time +".ckpt"
         ckpt = tf.train.get_checkpoint_state("./model/" + args.architecture + "_" + str(ckpt_counter))
         if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
             saver.restore(sess, ckpt.model_checkpoint_path)
@@ -150,6 +152,9 @@ def Train(args):
             train_acc = 0.0
             train_loss = 0.0
 
+            # get epoch start time
+            start_epoch = datetime.now()
+
             for step in range(1, iteration + 1):
                 batch_x, batch_y = next(train_generator)
                 train_feed_dict = {
@@ -161,13 +166,18 @@ def Train(args):
                 _, batch_loss = sess.run([train_op, loss], feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
 
-                sys.stdout.write("\r step: {}/{}, loss: {}, acc: {}".format(step, iteration, batch_loss, batch_acc))
+                # get step elapsed time
+                elapsed_step = datetime.now() - start_epoch
+
+                sys.stdout.write("\r epoch: {} step: {}/{} loss: {} acc: {} elapsed: {}".format(epoch, step, iteration, batch_loss, batch_acc, str(elapsed_step)))
                 sys.stdout.flush()
 
                 train_loss += batch_loss
                 train_acc += batch_acc
                 pre_index += batch_size
 
+            # get elapsed time
+            elapsed_epoch = datetime.now() - start_epoch
 
             # average loss
             train_loss /= iteration
@@ -222,8 +232,7 @@ def Train(args):
             summary_writer.flush()
 
             # stdout line
-            line = "\n epoch: %d/%d, train_loss: %.4f, train_acc: %.4f, test_loss: %.4f, test_acc: %.4f\n" % (
-                epoch, total_epochs, train_loss, train_acc, test_loss, test_acc)
+            line = "\n epoch:{0}/{1} train_loss:{2} train_acc:{3} test_loss:{4} test_acc:{5} time:{6} elapsed:{7}".format(epoch, total_epochs, train_loss, train_acc, test_loss, test_acc, str(datetime.now()), str(elapsed_epoch))
             print(line)
 
             # logs text
