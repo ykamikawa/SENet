@@ -106,7 +106,14 @@ def Train(args):
     l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in tf.trainable_variables()])
 
     # optimizer
-    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum, use_nesterov=True)
+    if args.optimizer == "momentum":
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum, use_nesterov=True)
+    elif args.optimizer == "adam":
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    elif args.optimizer == "SGD":
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+    elif args.optimizer == "SGD":
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
     train_op = optimizer.minimize(loss + l2_loss * weight_decay)
 
     # caluc accuracy
@@ -215,12 +222,12 @@ def Train(args):
             summary_writer.flush()
 
             # stdout line
-            line = "epoch: %d/%d, train_loss: %.4f, train_acc: %.4f, test_loss: %.4f, test_acc: %.4f \n" % (
+            line = "\n epoch: %d/%d, train_loss: %.4f, train_acc: %.4f, test_loss: %.4f, test_acc: %.4f\n" % (
                 epoch, total_epochs, train_loss, train_acc, test_loss, test_acc)
             print(line)
 
             # logs text
-            logs_text = args.architecture + "_logs.txt"
+            logs_text = "./log_txt/" + args.architecture + "_logs.txt"
             with open(logs_text, 'a') as f:
                 f.write(line)
 
@@ -247,18 +254,18 @@ if __name__ == '__main__':
         '-e',
         '--epochs',
         type=int,
-        default=30,
+        default=100,
         help='number of epochs')
     argparser.add_argument(
         "-s",
         '--input_size',
         type=int,
-        default=128,
+        default=224,
         help='input size')
     argparser.add_argument(
         "-b",
         '--batch_size',
-        default=8,
+        default=4,
         type=int,
         help='batch size')
     argparser.add_argument(
@@ -267,6 +274,11 @@ if __name__ == '__main__':
         type=str,
         default="SE_ResNeXt",
         help='model architecture')
+    argparser.add_argument(
+        '--optimizer',
+        type=str,
+        default="adam",
+        help='train optimizer')
     argparser.add_argument(
         "-g",
         '--gpu_id',
