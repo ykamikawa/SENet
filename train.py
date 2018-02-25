@@ -125,12 +125,12 @@ def Train(args):
     # start session
     with tf.Session() as sess:
         # get time
-        start_time = str(datetime.now())
+        start_time = str(datetime.now()).replace(" ", "")
 
         # ckpt config
         ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
         save_dir = "./model/" + args.architecture + "_" + str(ckpt_counter + 1)
-        save_path = save_dir + "/" + args.architecture + start_time +".ckpt"
+        save_path = save_dir + "/" + start_time + ".ckpt"
         ckpt = tf.train.get_checkpoint_state("./model/" + args.architecture + "_" + str(ckpt_counter))
         if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
             saver.restore(sess, ckpt.model_checkpoint_path)
@@ -236,7 +236,7 @@ def Train(args):
             print(line)
 
             # logs text
-            logs_text = "./log_txt/" + args.architecture + "_logs.txt"
+            logs_text = "./log_txt/" + args.architecture + start_time + "_logs.txt"
             with open(logs_text, 'a') as f:
                 f.write(line)
 
