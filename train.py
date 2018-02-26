@@ -122,10 +122,24 @@ def Train(args):
     # trained model saver
     saver = tf.train.Saver(tf.global_variables())
 
+    # session config
+    gpu_options = tf.GPUOptions(
+            visible_device_list=args.gpu_id,
+            allow_growth=True)
+    sess_config = tf.ConfigProto(gpu_options=gpu_options)
+
     # start session
-    with tf.Session() as sess:
+    with tf.Session(config=sess_config) as sess:
         # get time
         start_time = str(datetime.now()).replace(" ", "")
+
+        print("data: {}, nb_classes: {}".format(start_time, nb_classes))
+
+        # log hyper params
+        logs_text = "./logs_txt/" + args.architecture + start_time + "_logs.txt"
+        train_config = "architecture: {0}, epochs: {1}, batch_size: {2}, input_size: {3}, optimizer: {4}\n".format(args.architecture, args.epochs, args.batch_size, args.input_size, args.optimizer)
+        with open(logs_text, 'a') as f:
+            f.write(train_config)
 
         # ckpt config
         ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
@@ -155,6 +169,7 @@ def Train(args):
             # get epoch start time
             start_epoch = datetime.now()
 
+            # iteration
             for step in range(1, iteration + 1):
                 batch_x, batch_y = next(train_generator)
                 train_feed_dict = {
@@ -163,15 +178,17 @@ def Train(args):
                     learning_rate: epoch_learning_rate,
                     training_flag: True}
 
+                # optimize
                 _, batch_loss = sess.run([train_op, loss], feed_dict=train_feed_dict)
                 batch_acc = accuracy.eval(feed_dict=train_feed_dict)
 
-                sys.stdout.write("\r epoch: {} step: {}/{} loss: {} acc: {}".format(epoch, step, iteration, batch_loss, batch_acc))
-                sys.stdout.flush()
-
+                # add loss and acc
                 train_loss += batch_loss
                 train_acc += batch_acc
-                pre_index += batch_size
+
+                # logging
+                sys.stdout.write("\r epoch: {} step: {}/{} loss: {} acc: {}".format(epoch, step, iteration, batch_loss, batch_acc))
+                sys.stdout.flush()
 
             # get elapsed time
             elapsed_epoch = datetime.now() - start_epoch
@@ -196,7 +213,7 @@ def Train(args):
             test_loss = 0.0
             test_pre_index = 0
             add = 1000
-            for it in range(test_iteration):
+            for test_step in range(1, test_iteration + 1):
                 test_batch_x, test_batch_y = next(val_generator)
                 test_feed_dict = {
                     x: test_batch_x,
@@ -205,8 +222,12 @@ def Train(args):
                     training_flag: False}
 
                 loss_, acc_ = sess.run([loss, accuracy], feed_dict=test_feed_dict)
+
                 test_loss += loss_
                 test_acc += acc_
+
+                sys.stdout.write("\r epoch: {} val_step: {}/{}".format(epoch, test_step, test_iteration))
+                sys.stdout.flush()
 
             # average loss
             test_loss /= test_iteration
@@ -229,11 +250,10 @@ def Train(args):
             summary_writer.flush()
 
             # stdout line
-            line = "\n epoch:{0}/{1} train_loss:{2} train_acc:{3} test_loss:{4} test_acc:{5} time:{6} elapsed:{7}".format(epoch, total_epochs, train_loss, train_acc, test_loss, test_acc, str(datetime.now()), str(elapsed_epoch))
+            line = "epoch:{0}/{1} time: {2}[sec] train_loss:{3} train_acc:{4} test_loss:{5} test_acc:{6}\n".format(epoch, total_epochs, str(elapsed_epoch.total_seconds()),train_loss, train_acc, test_loss, test_acc)
             print(line)
 
             # logs text
-            logs_text = "./logs_txt/" + args.architecture + start_time + "_logs.txt"
             with open(logs_text, 'a') as f:
                 f.write(line)
 
@@ -248,13 +268,11 @@ if __name__ == '__main__':
         '-d',
         '--data_list',
         type=str,
-        default="../dataset/cookpad/train_master.tsv",
         help='path to data list')
     argparser.add_argument(
         "-c",
         '--category_list',
         type=str,
-        default="../dataset/cookpad/master.tsv",
         help='path to data list')
     argparser.add_argument(
         '-e',
@@ -266,24 +284,24 @@ if __name__ == '__main__':
         "-s",
         '--input_size',
         type=int,
-        default=224,
+        default=128,
         help='input size')
     argparser.add_argument(
         "-b",
         '--batch_size',
-        default=4,
+        default=16,
         type=int,
         help='batch size')
     argparser.add_argument(
         '-a',
         '--architecture',
         type=str,
-        default="SE_ResNeXt",
+        default="SE_Inception_resnet_v2",
         help='model architecture')
     argparser.add_argument(
         '--optimizer',
         type=str,
-        default="adam",
+        default="momentum",
         help='train optimizer')
     argparser.add_argument(
         "-g",
@@ -293,7 +311,5 @@ if __name__ == '__main__':
         help='gpu id')
     args = argparser.parse_args()
 
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
     Train(args)
