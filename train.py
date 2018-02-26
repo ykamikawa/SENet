@@ -131,7 +131,7 @@ def Train(args):
     # start session
     with tf.Session(config=sess_config) as sess:
         # get time
-        start_time = str(datetime.now()).replace(" ", "")
+        start_time = str(datetime.now()).replace(" ", "-")
 
         print("data: {}, nb_classes: {}".format(start_time, nb_classes))
 
