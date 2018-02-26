@@ -250,7 +250,7 @@ def Train(args):
             summary_writer.flush()
 
             # stdout line
-            line = "epoch:{0}/{1} time: {2}[sec] train_loss:{3} train_acc:{4} test_loss:{5} test_acc:{6}\n".format(epoch, total_epochs, str(elapsed_epoch.total_seconds()),train_loss, train_acc, test_loss, test_acc)
+            line = "\n epoch:{0}/{1} time: {2}[sec] train_loss:{3} train_acc:{4} test_loss:{5} test_acc:{6}\n".format(epoch, total_epochs, str(elapsed_epoch.total_seconds()),train_loss, train_acc, test_loss, test_acc)
             print(line)
 
             # logs text
