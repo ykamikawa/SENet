@@ -135,19 +135,13 @@ def Train(args):
 
         print("data: {}, nb_classes: {}".format(start_time, nb_classes))
 
-        # log hyper params
-        logs_text = "./logs_txt/" + args.architecture + start_time + "_logs.txt"
-        train_config = "architecture: {0}, epochs: {1}, batch_size: {2}, input_size: {3}, optimizer: {4}\n".format(args.architecture, args.epochs, args.batch_size, args.input_size, args.optimizer)
-        print(train_config)
-        with open(logs_text, 'a') as f:
-            f.write(train_config)
 
         # ckpt config
         ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
         save_dir = "./model/" + args.architecture + "_" + str(ckpt_counter + 1)
         save_path = save_dir + "/" + start_time + ".ckpt"
         ckpt = tf.train.get_checkpoint_state("./model/" + args.architecture + "_" + str(ckpt_counter))
-        if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
+        if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path) and args.weights:
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
             sess.run(tf.global_variables_initializer())
@@ -157,10 +151,23 @@ def Train(args):
         log_dir = "./logs/" + args.architecture + "_" + str(log_counter + 1)
         summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
 
+        # log hyper params
+        logs_text = "./logs_txt/" + args.architecture + "_" + str(log_counter + 1) + "_logs.txt"
+        train_config = "date: {}\narchitecture: {}, epochs: {}, batch_size: {}, input_size: {}, optimizer: {}\n".format(
+                start_time,
+                args.architecture,
+                args.epochs,
+                args.batch_size,
+                args.input_size,
+                args.optimizer)
+        print(train_config)
+        with open(logs_text, 'a') as f:
+            f.write(train_config)
+
         # training
         epoch_learning_rate = init_learning_rate
         for epoch in range(1, total_epochs + 1):
-            if epoch % 30 == 0 :
+            if epoch % 25 == 0 :
                 epoch_learning_rate = epoch_learning_rate / 10
 
             pre_index = 0
@@ -214,6 +221,7 @@ def Train(args):
             test_loss = 0.0
             test_pre_index = 0
             add = 1000
+            print("\n")
             for test_step in range(1, test_iteration + 1):
                 test_batch_x, test_batch_y = next(val_generator)
                 test_feed_dict = {
@@ -285,7 +293,7 @@ if __name__ == '__main__':
         "-s",
         '--input_size',
         type=int,
-        default=128,
+        default=224,
         help='input size')
     argparser.add_argument(
         "-b",
@@ -310,6 +318,11 @@ if __name__ == '__main__':
         default="0",
         type=str,
         help='gpu id')
+    argparser.add_argument(
+        "-w",
+        '--weights',
+        default=False,
+        help='use pretrained weigh')
     args = argparser.parse_args()
 
 
