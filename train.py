@@ -138,6 +138,7 @@ def Train(args):
         # log hyper params
         logs_text = "./logs_txt/" + args.architecture + start_time + "_logs.txt"
         train_config = "architecture: {0}, epochs: {1}, batch_size: {2}, input_size: {3}, optimizer: {4}\n".format(args.architecture, args.epochs, args.batch_size, args.input_size, args.optimizer)
+        print(train_config)
         with open(logs_text, 'a') as f:
             f.write(train_config)
 
