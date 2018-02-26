@@ -3,84 +3,128 @@ import os
 import cv2
 import numpy as np
 from keras.utils import np_utils
-from keras.preprocessing.image import img_to_array
+from keras.preprocessing.image import img_to_array, ImageDataGenerator
 from scipy.ndimage.interpolation import rotate
 from scipy.misc import imresize
 
 
-def horizontal_flip(image, rate=0.5):
-        if np.random.rand() < rate:
-            image = image[::-1, :, :]
-        image = image[:, ::-1, :]
-        return image
-
-
-def vertical_flip(image, rate=0.5):
-    if np.random.rand() < rate:
-        image = image[::-1, :, :]
-    return image
-
-
-def random_rotation(image, angle_range=(0, 180)):
-    h, w, _ = image.shape
-    angle = np.random.randint(*angle_range)
-    image = rotate(image, angle)
-    image = imresize(image, (h, w))
-    return image
-
-
-def random_crop(image, crop_size=(224, 224)):
-    h, w, _ = image.shape
-
-    # 0~(400-224)の間で画像のtop, leftを決める
-    top = np.random.randint(0, h - crop_size[0])
-    left = np.random.randint(0, w - crop_size[1])
-
-    # top, leftから画像のサイズである224を足して、bottomとrightを決める
-    bottom = top + crop_size[0]
-    right = left + crop_size[1]
-
-    # 決めたtop, bottom, left, rightを使って画像を抜き出す
-    image = image[top:bottom, left:right, :]
-    return image
-
-
-def scale_augmentation(image, scale_range=(256, 400), crop_size=224):
-    scale_size = np.random.randint(*scale_range)
-    image = imresize(image, (scale_size, scale_size))
-    image = random_crop(image, (crop_size, crop_size))
-    return image
-
-
 class DataGenerator():
-    def __init__(self):
+    def __init__(
+            self,
+            rotation_range=90,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            shear_range=0.5,
+            zoom_range=0.5,
+            horizontal_flip=True,
+            vertical_flip=True,
+            random_erasing=False,
+            mixup=False,
+            mixup_alpha=0.2,
+            augment=False):
+
+        self.datagen = ImageDataGenerator(
+                featurewise_center=False,
+                samplewise_center=False,
+                featurewise_std_normalization=False,
+                samplewise_std_normalization=False,
+                zca_whitening=False,
+                zca_epsilon=0,
+                rotation_range=rotation_range,
+                width_shift_range=width_shift_range,
+                height_shift_range=height_shift_range,
+                shear_range=shear_range,
+                zoom_range=zoom_range,
+                channel_shift_range=False,
+                fill_mode="nearest",
+                cval=0.,
+                horizontal_flip=horizontal_flip,
+                vertical_flip=vertical_flip,
+                rescale=None,
+                preprocessing_function=None,
+                data_format=None)
+        self.random_erasing = random_erasing
+        self.mixup = mixup
+        self.mixup_alpha = mixup_alpha
+        self.augment = augment
         self.reset()
 
     def reset(self):
         self.images = []
         self.labels = []
 
-    def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, augment=True):
-        dir_path = "../dataset/cookpad/train/"
+    # todo
+    def _mixup(self, x_batch, y_batch):
+        batch_size, h, w, c = x_batch.shape
+        _, nb_classes = y_batch.shape
+        l = np.random.beta(self.mixup_alpha, self.mixup_alpha, batch_size)
+        x1 = x_batch[:int(batch_size/2)]
+        x2 = x_batch[int(batch_size/2):]
+        y1 = y_batch[:int(batch_size/2)]
+        y2 = y_batch[int(batch_size/2):]
+        x_l = l.reshape(batch_size, 1, 1, 1)
+        y_l = l.reshape(batch_size, 1)
+
+        x = x1 * x_l + x2 * (1 - x_l)
+        y = y1 * y_l + y2 * (1 - y_l)
+
+        return x, y
+
+    def _random_erasing(self, image_org, p=0.5, s=(0.02, 0.4), r=(0.3, 3)):
+        # Whether to process
+        if np.random.rand() > p:
+            return image_org
+        image = np.copy(image_org)
+
+        # Random pixel value to be masked
+        mask_value = np.random.randint(0, 256)
+
+        h, w, _ = image.shape
+        # Random mask size
+        mask_area = np.random.randint(h * w * s[0], h * w * s[1])
+
+        # Random mask aspect ratio
+        mask_aspect_ratio = np.random.rand() * r[1] + r[0]
+
+        # determine mask width and height
+        mask_height = int(np.sqrt(mask_area / mask_aspect_ratio))
+        if mask_height > h - 1:
+            mask_height = h - 1
+        mask_width = int(mask_aspect_ratio * mask_height)
+        if mask_width > w - 1:
+            mask_width = w - 1
+
+        top = np.random.randint(0, h - mask_height)
+        left = np.random.randint(0, w - mask_width)
+        bottom = top + mask_height
+        right = left + mask_width
+        image[top:bottom, left:right, :].fill(mask_value)
+        return image
+
+
+    def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, dir_path):
         while True:
             if len(self.images):
                 inputs = np.asarray(self.images)
                 targets = np.asarray(self.labels)
                 self.reset()
+                if self.mixup:
+                    inputs, targets = self._mixup(inputs, targets)
 
                 yield inputs, targets
 
             for i, row in df.iterrows():
                 img = cv2.imread(dir_path + row.file_name)[:, :, ::-1]
                 img = cv2.resize(img, (image_size, image_size))
-                array_img = img_to_array(img)/255
+                array_img = img_to_array(img)
 
-                if augment:
-                    array_img = horizontal_flip(array_img)
-                    array_img = vertical_flip(array_img)
-                self.images.append(array_img)
+                if self.augment:
+                    array_img = self.datagen.random_transform(array_img)
+                if self.random_erasing:
+                    array_img = self._random_erasing(array_img)
+                self.images.append(array_img/255)
 
-                label = row.category_id
+                label = int(row.category_id)
                 label = np_utils.to_categorical(label, num_classes=nb_classes)
                 label = np.reshape(label, [nb_classes])
                 self.labels.append(label)
@@ -89,5 +133,7 @@ class DataGenerator():
                     inputs = np.asarray(self.images)
                     targets = np.asarray(self.labels)
                     self.reset()
+                    if self.mixup:
+                        inputs, targets = self._mixup(inputs, targets)
 
                     yield inputs, targets

@@ -3,7 +3,6 @@ import os
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import argparse
 import sys
 from datetime import datetime
@@ -13,13 +12,14 @@ from SE_Inception_resnet_v2 import SE_Inception_resnet_v2
 from SE_Inception_v4 import SE_Inception_v4
 
 from generator import DataGenerator
+from utils import even_separate
 
 
 def Train(args):
     # prepare dataframe
     df = pd.read_csv(args.data_list, delimiter="\t")
-    train_df, val_df = train_test_split(df, test_size=0.2)
     category_df = pd.read_csv(args.category_list, delimiter="\t")
+    train_df, val_df = even_separate(df, category_df)
 
     # input params
     image_size = args.input_size
@@ -48,20 +48,31 @@ def Train(args):
 
 
     # batch generators
-    train_datagen = DataGenerator()
+    train_datagen = DataGenerator(
+            rotation_range=90,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            shear_range=0.3,
+            zoom_range=0.5,
+            horizontal_flip=True,
+            vertical_flip=True,
+            random_erasing=True,
+            mixup=False,
+            mixup_alpha=0.2,
+            augment=True)
     train_generator = train_datagen.flow_from_dataframe(
             train_df,
             nb_classes,
             batch_size,
             image_size,
-            augment=True)
-    val_datagen = DataGenerator()
+            args.dir_path)
+    val_datagen = DataGenerator(augment=False)
     val_generator = val_datagen.flow_from_dataframe(
             val_df,
             nb_classes,
             batch_size,
             image_size,
-            augment=False)
+            args.dir_path)
 
     # placeholders
     x = tf.placeholder(
@@ -167,7 +178,7 @@ def Train(args):
         # training
         epoch_learning_rate = init_learning_rate
         for epoch in range(1, total_epochs + 1):
-            if epoch % 25 == 0 :
+            if epoch % 30 == 0 :
                 epoch_learning_rate = epoch_learning_rate / 10
 
             pre_index = 0
@@ -221,7 +232,6 @@ def Train(args):
             test_loss = 0.0
             test_pre_index = 0
             add = 1000
-            print("\n")
             for test_step in range(1, test_iteration + 1):
                 test_batch_x, test_batch_y = next(val_generator)
                 test_feed_dict = {
@@ -284,6 +294,10 @@ if __name__ == '__main__':
         type=str,
         help='path to data list')
     argparser.add_argument(
+        '--dir_path',
+        type=str,
+        help='image directory')
+    argparser.add_argument(
         '-e',
         '--epochs',
         type=int,
@@ -324,6 +338,5 @@ if __name__ == '__main__':
         default=False,
         help='use pretrained weigh')
     args = argparser.parse_args()
-
 
     Train(args)
