@@ -63,6 +63,13 @@ class DataGenerator():
     def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, augment=True):
         dir_path = "../dataset/cookpad/train/"
         while True:
+            if len(self.images):
+                inputs = np.asarray(self.images)
+                targets = np.asarray(self.labels)
+                self.reset()
+
+                yield inputs, targets
+
             for i, row in df.iterrows():
                 img = cv2.imread(dir_path + row.file_name)[:, :, ::-1]
                 img = cv2.resize(img, (image_size, image_size))

@@ -41,8 +41,8 @@ def Train(args):
 
     # training params
     batch_size = args.batch_size
-    iteration = int(len(train_df) / batch_size)
-    test_iteration = int(len(val_df) / batch_size)
+    iteration = int(len(train_df) / batch_size) + 1
+    test_iteration = int(len(val_df) / batch_size) + 1
     total_epochs = args.epochs
     nb_classes = len(category_df) + 1
 
