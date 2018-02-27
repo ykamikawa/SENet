@@ -122,8 +122,6 @@ def Train(args):
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     elif args.optimizer == "SGD":
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-    elif args.optimizer == "SGD":
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
     train_op = optimizer.minimize(loss + l2_loss * weight_decay)
 
     # caluc accuracy
@@ -312,12 +310,12 @@ if __name__ == '__main__':
         "-s",
         '--input_size',
         type=int,
-        default=224,
+        default=336,
         help='input size')
     argparser.add_argument(
         "-b",
         '--batch_size',
-        default=16,
+        default=32,
         type=int,
         help='batch size')
     argparser.add_argument(
