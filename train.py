@@ -178,7 +178,7 @@ def Train(args):
         # training
         epoch_learning_rate = init_learning_rate
         for epoch in range(1, total_epochs + 1):
-            if epoch % 30 == 0 :
+            if epoch % args.lr_schedules == 0 :
                 epoch_learning_rate = epoch_learning_rate / 10
 
             pre_index = 0
@@ -303,6 +303,11 @@ if __name__ == '__main__':
         type=int,
         default=100,
         help='number of epochs')
+    argparser.add_argument(
+        '--lr_schedules',
+        type=int,
+        default=30,
+        help='learning rate schedules')
     argparser.add_argument(
         "-s",
         '--input_size',

@@ -47,9 +47,9 @@ class DataGenerator():
         self.mixup = mixup
         self.mixup_alpha = mixup_alpha
         self.augment = augment
-        self.reset()
+        self._reset()
 
-    def reset(self):
+    def _reset(self):
         self.images = []
         self.labels = []
 
@@ -107,7 +107,7 @@ class DataGenerator():
             if len(self.images):
                 inputs = np.asarray(self.images)
                 targets = np.asarray(self.labels)
-                self.reset()
+                self._reset()
                 if self.mixup:
                     inputs, targets = self._mixup(inputs, targets)
 
@@ -132,7 +132,7 @@ class DataGenerator():
                 if len(self.images) == batch_size:
                     inputs = np.asarray(self.images)
                     targets = np.asarray(self.labels)
-                    self.reset()
+                    self._reset()
                     if self.mixup:
                         inputs, targets = self._mixup(inputs, targets)
 
