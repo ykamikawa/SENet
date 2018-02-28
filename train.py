@@ -49,13 +49,13 @@ def Train(args):
 
     # batch generators
     train_datagen = DataGenerator(
-            rotation_range=90,
+            rotation_range=0.,
             width_shift_range=0.2,
             height_shift_range=0.2,
-            shear_range=0.3,
-            zoom_range=0.5,
+            shear_range=0.,
+            zoom_range=0.,
             horizontal_flip=True,
-            vertical_flip=True,
+            vertical_flip=False,
             random_erasing=True,
             mixup=False,
             mixup_alpha=0.2,
@@ -140,7 +140,8 @@ def Train(args):
     # start session
     with tf.Session(config=sess_config) as sess:
         # get time
-        start_time = str(datetime.now()).replace(" ", "-")
+        date = datetime.today()
+        start_time = str(date.day) + "-" + str(date.hour) + "-" + str(date.minute)
 
         print("data: {}, nb_classes: {}".format(start_time, nb_classes))
 
@@ -162,10 +163,11 @@ def Train(args):
 
         # log hyper params
         logs_text = "./logs_txt/" + args.architecture + "_" + str(log_counter + 1) + "_logs.txt"
-        train_config = "date: {}\narchitecture: {}, epochs: {}, batch_size: {}, input_size: {}, optimizer: {}\n".format(
+        train_config = "date: {}\narchitecture: {}, epochs: {}, lr_schedules: {}, batch_size: {}, input_size: {}, optimizer: {}\n".format(
                 start_time,
                 args.architecture,
                 args.epochs,
+                args.lr_schedules,
                 args.batch_size,
                 args.input_size,
                 args.optimizer)
@@ -267,7 +269,7 @@ def Train(args):
             summary_writer.flush()
 
             # stdout line
-            line = "\n epoch:{0}/{1} time: {2}[sec] train_loss:{3} train_acc:{4} test_loss:{5} test_acc:{6}\n".format(epoch, total_epochs, str(elapsed_epoch.total_seconds()),train_loss, train_acc, test_loss, test_acc)
+            line = "\nepoch:{0}/{1} time: {2}[sec] train_loss:{3} train_acc:{4} test_loss:{5} test_acc:{6}".format(epoch, total_epochs, str(elapsed_epoch.total_seconds()),train_loss, train_acc, test_loss, test_acc)
             print(line)
 
             # logs text
