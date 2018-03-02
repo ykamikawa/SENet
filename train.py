@@ -17,9 +17,9 @@ from utils import even_separate
 
 def Train(args):
     # prepare dataframe
+    category_df = pd.read_csv(args.category_list, delimiter="\t")
     if args.val_csv is None:
         df = pd.read_csv(args.train_csv, delimiter="\t")
-        category_df = pd.read_csv(args.category_list, delimiter="\t")
         train_df, val_df = even_separate(df, category_df, test_size=0.2)
     else:
         train_df = pd.read_csv(args.train_csv)
