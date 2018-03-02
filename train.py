@@ -17,9 +17,13 @@ from utils import even_separate
 
 def Train(args):
     # prepare dataframe
-    df = pd.read_csv(args.data_list, delimiter="\t")
-    category_df = pd.read_csv(args.category_list, delimiter="\t")
-    train_df, val_df = even_separate(df, category_df)
+    if args.val_csv is None:
+        df = pd.read_csv(args.train_csv, delimiter="\t")
+        category_df = pd.read_csv(args.category_list, delimiter="\t")
+        train_df, val_df = even_separate(df, category_df, test_size=0.2)
+    else:
+        train_df = pd.read_csv(args.train_csv)
+        val_df = pd.read_csv(args.val_csv)
 
     # input params
     image_size = args.input_size
@@ -163,14 +167,15 @@ def Train(args):
 
         # log hyper params
         logs_text = "./logs_txt/" + args.architecture + "_" + str(log_counter + 1) + "_logs.txt"
-        train_config = "date: {}\narchitecture: {}, epochs: {}, lr_schedules: {}, batch_size: {}, input_size: {}, optimizer: {}\n".format(
+        train_config = "date: {}, architecture: {}, epochs: {}, lr_schedules: {}, batch_size: {}, input_size: {}, optimizer: {}, val_csv: {}\n".format(
                 start_time,
                 args.architecture,
                 args.epochs,
                 args.lr_schedules,
                 args.batch_size,
                 args.input_size,
-                args.optimizer)
+                args.optimizer,
+                args.val_csv)
         print(train_config)
         with open(logs_text, 'a') as f:
             f.write(train_config)
@@ -284,9 +289,15 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
         description='SENet')
     argparser.add_argument(
-        '-d',
-        '--data_list',
+        '-t',
+        '--train_csv',
         type=str,
+        help='path to data list')
+    argparser.add_argument(
+        '-v',
+        '--val_csv',
+        type=str,
+        default=None,
         help='path to data list')
     argparser.add_argument(
         "-c",
