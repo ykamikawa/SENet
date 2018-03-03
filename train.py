@@ -37,7 +37,7 @@ def Train(args):
     # network params
     # how many split
     cardinality = 8
-    # res_block ! (split + transition)
+    # res_block(split + transition)
     blocks = 3
     # out channel
     depth = 64
@@ -54,14 +54,16 @@ def Train(args):
     # batch generators
     train_datagen = DataGenerator(
             rotation_range=0.,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
+            width_shift_range=0.,
+            height_shift_range=0.,
             shear_range=0.,
             zoom_range=0.,
             horizontal_flip=True,
             vertical_flip=False,
+            random_crop=False,
+            scale_augmentation=True,
             random_erasing=True,
-            mixup=False,
+            mixup=True,
             mixup_alpha=0.2,
             augment=True)
     train_generator = train_datagen.flow_from_dataframe(

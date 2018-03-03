@@ -4,5 +4,7 @@ __pycache__
 logs
 *_logs.txt
 model
+*.csv
 *.sh
 logs_txt
+submit

@@ -11,13 +11,15 @@ from scipy.misc import imresize
 class DataGenerator():
     def __init__(
             self,
-            rotation_range=90,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            shear_range=0.5,
-            zoom_range=0.5,
+            rotation_range=0.,
+            width_shift_range=0.,
+            height_shift_range=0.,
+            shear_range=0.,
+            zoom_range=0.,
             horizontal_flip=True,
             vertical_flip=True,
+            random_crop=False,
+            scale_augmentation=False,
             random_erasing=False,
             mixup=False,
             mixup_alpha=0.2,
@@ -43,6 +45,9 @@ class DataGenerator():
                 rescale=None,
                 preprocessing_function=None,
                 data_format=None)
+
+        self.scale_augmentation = scale_augmentation
+        self.random_crop = random_crop
         self.random_erasing = random_erasing
         self.mixup = mixup
         self.mixup_alpha = mixup_alpha
@@ -56,19 +61,48 @@ class DataGenerator():
     # todo
     def _mixup(self, x_batch, y_batch):
         batch_size, h, w, c = x_batch.shape
+        harf_batch = int(batch_size/2)
         _, nb_classes = y_batch.shape
-        l = np.random.beta(self.mixup_alpha, self.mixup_alpha, batch_size)
-        x1 = x_batch[:int(batch_size/2)]
-        x2 = x_batch[int(batch_size/2):]
-        y1 = y_batch[:int(batch_size/2)]
-        y2 = y_batch[int(batch_size/2):]
-        x_l = l.reshape(batch_size, 1, 1, 1)
-        y_l = l.reshape(batch_size, 1)
+        l = np.random.beta(self.mixup_alpha, self.mixup_alpha, harf_batch)
+        x_l = l.reshape(harf_batch, 1, 1, 1)
+        y_l = l.reshape(harf_batch, 1)
 
-        x = x1 * x_l + x2 * (1 - x_l)
-        y = y1 * y_l + y2 * (1 - y_l)
+        x_1 = x_batch[:harf_batch]
+        y_1 = y_batch[:harf_batch]
+        x_2 = x_batch[harf_batch:]
+        y_2 = y_batch[harf_batch:]
+
+        x_1 = x_1 * x_l + x_2 * (1 - x_l)
+        y_1 = y_1 * y_l + y_2 * (1 - y_l)
+        x_2 = x_2 * x_l + x_1 * (1 - x_l)
+        y_2 = y_2 * y_l + y_1 * (1 - y_l)
+
+        x = np.vstack((x_1, x_2))
+        y = np.vstack((y_1, y_2))
 
         return x, y
+
+    def _random_crop(self, image, crop_size):
+        h, w, _ = image.shape
+
+        # Deicde top and left bitween 0 to (400-crop_size)
+        top = np.random.randint(0, h - crop_size)
+        left = np.random.randint(0, w - crop_size)
+
+        # Decide bottom and right
+        bottom = top + crop_size
+        right = left + crop_size
+
+        # Crop image using top,bottom,left,right
+        image = image[top:bottom, left:right, :]
+        return image
+
+    def _scale_augmentation(self, image, crop_size, scale_range=(444, 600)):
+        scale_size = np.random.randint(*scale_range)
+        image = imresize(image, (scale_size, scale_size))
+        image = self._random_crop(image, crop_size)
+        return image
+
 
     def _random_erasing(self, image_org, p=0.5, s=(0.02, 0.4), r=(0.3, 3)):
         # Whether to process
@@ -103,25 +137,28 @@ class DataGenerator():
 
 
     def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, dir_path):
+        flag = False
         while True:
             if len(self.images):
                 inputs = np.asarray(self.images)
                 targets = np.asarray(self.labels)
                 self._reset()
-                if self.mixup:
-                    inputs, targets = self._mixup(inputs, targets)
 
                 yield inputs, targets
 
+            df = df.sample(frac=1).reset_index(drop=True)
             for i, row in df.iterrows():
                 img = cv2.imread(dir_path + row.file_name)[:, :, ::-1]
                 img = cv2.resize(img, (image_size, image_size))
                 array_img = img_to_array(img)
-
                 if self.augment:
                     array_img = self.datagen.random_transform(array_img)
-                if self.random_erasing:
-                    array_img = self._random_erasing(array_img)
+                    if self.scale_augmentation:
+                        array_img = self._scale_augmentation(array_img, image_size, scale_range=(444, 600))
+                    if self.random_crop:
+                        array_img = self._random_crop(array_img, image_size)
+                    if self.random_erasing:
+                        array_img = self._random_erasing(array_img)
                 self.images.append(array_img/255)
 
                 label = int(row.category_id)
@@ -133,7 +170,44 @@ class DataGenerator():
                     inputs = np.asarray(self.images)
                     targets = np.asarray(self.labels)
                     self._reset()
-                    if self.mixup:
+                    # mixup
+                    if self.augment and self.mixup:
                         inputs, targets = self._mixup(inputs, targets)
 
                     yield inputs, targets
+
+    def flow_from_dataframe_prediction(self, df, batch_size, image_size, dir_path):
+        for i, row in df.iterrows():
+            img = cv2.imread(dir_path + row.file_name)[:, :, ::-1]
+            img = cv2.resize(img, (image_size, image_size))
+            array_img = img_to_array(img)
+            if self.augment:
+                array_img = self.datagen.random_transform(array_img)
+                if self.scale_augmentation:
+                    array_img = self._scale_augmentation(array_img, image_size, scale_range=(444, 600))
+                if self.random_crop:
+                    array_img = self._random_crop(array_img, image_size)
+                if self.random_erasing:
+                    array_img = self._random_erasing(array_img)
+            array_img = array_img/255
+            array_img = np.expand_dims(array_img, axis=0)
+
+            yield array_img
+
+    def flow_from_list_prediction(self, lists, batch_size, image_size, dir_path):
+        for file_name in lists:
+            img = cv2.imread(dir_path + file_name)[:, :, ::-1]
+            img = cv2.resize(img, (image_size, image_size))
+            array_img = img_to_array(img)
+            if self.augment:
+                array_img = self.datagen.random_transform(array_img)
+                if self.scale_augmentation:
+                    array_img = self._scale_augmentation(array_img, image_size, scale_range=(444, 600))
+                if self.random_crop:
+                    array_img = self._random_crop(array_img, image_size)
+                if self.random_erasing:
+                    array_img = self._random_erasing(array_img)
+            array_img = array_img/255
+            array_img = np.expand_dims(array_img, axis=0)
+
+            yield array_img
