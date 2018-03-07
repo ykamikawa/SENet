@@ -63,7 +63,7 @@ def Train(args):
             random_crop=False,
             scale_augmentation=True,
             random_erasing=True,
-            mixup=True,
+            mixup=False,
             mixup_alpha=0.2,
             augment=True)
     train_generator = train_datagen.flow_from_dataframe(
