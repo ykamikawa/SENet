@@ -84,10 +84,13 @@ class DataGenerator():
 
     def _random_crop(self, image, crop_size):
         h, w, _ = image.shape
+        new_w = int(w * 1.25)
+        new_h = int(h * 1.25)
+        image = imresize(image, (new_w, new_h))
 
         # Deicde top and left bitween 0 to (400-crop_size)
-        top = np.random.randint(0, h - crop_size)
-        left = np.random.randint(0, w - crop_size)
+        top = np.random.randint(0, new_h - crop_size)
+        left = np.random.randint(0, new_w - crop_size)
 
         # Decide bottom and right
         bottom = top + crop_size
@@ -149,8 +152,8 @@ class DataGenerator():
             df = df.sample(frac=1).reset_index(drop=True)
             for i, row in df.iterrows():
                 img = cv2.imread(dir_path + row.file_name)[:, :, ::-1]
-                img = cv2.resize(img, (image_size, image_size))
                 array_img = img_to_array(img)
+                array_img = imresize(array_img, (image_size, image_size))
                 if self.augment:
                     array_img = self.datagen.random_transform(array_img)
                     if self.scale_augmentation:

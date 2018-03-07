@@ -61,7 +61,7 @@ def Train(args):
             horizontal_flip=True,
             vertical_flip=False,
             random_crop=False,
-            scale_augmentation=True,
+            scale_augmentation=False,
             random_erasing=True,
             mixup=False,
             mixup_alpha=0.2,
@@ -113,7 +113,7 @@ def Train(args):
     elif args.architecture == "SE_Inception_resnet_v2":
         logits = SE_Inception_resnet_v2(
                 x,
-                nb_classes,
+                nb_classes=nb_classes,
                 training=training_flag,
                 ratio=reduction_ratio).model
 
@@ -155,9 +155,11 @@ def Train(args):
         # ckpt config
         ckpt_counter = len([ckpt_dir for ckpt_dir in os.listdir("./model") if args.architecture in ckpt_dir])
         save_dir = "./model/" + args.architecture + "_" + str(ckpt_counter + 1)
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
         save_path = save_dir + "/" + start_time + ".ckpt"
-        ckpt = tf.train.get_checkpoint_state("./model/" + args.architecture + "_" + str(ckpt_counter))
-        if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path) and args.weights:
+        ckpt = tf.train.get_checkpoint_state(save_dir)
+        if  args.weights and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
             sess.run(tf.global_variables_initializer())
