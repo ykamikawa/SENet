@@ -61,7 +61,7 @@ def Train(args):
             horizontal_flip=True,
             vertical_flip=False,
             random_crop=False,
-            scale_augmentation=False,
+            scale_augmentation=True,
             random_erasing=True,
             mixup=False,
             mixup_alpha=0.2,
