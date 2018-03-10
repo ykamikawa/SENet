@@ -8,3 +8,4 @@ model
 *.sh
 logs_txt
 submit
+pseudo_probs
