@@ -16,8 +16,8 @@ class DataGenerator():
             height_shift_range=0.,
             shear_range=0.,
             zoom_range=0.,
-            horizontal_flip=True,
-            vertical_flip=True,
+            horizontal_flip=False,
+            vertical_flip=False,
             random_crop=False,
             scale_augmentation=False,
             random_erasing=False,
@@ -140,7 +140,6 @@ class DataGenerator():
 
 
     def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, dir_path):
-        flag = False
         while True:
             if len(self.images):
                 inputs = np.asarray(self.images)
