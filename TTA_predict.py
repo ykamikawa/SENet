@@ -52,9 +52,9 @@ image_size = 336
 img_channels = 3
 nb_classes = len(category_df)
 dir_path = "../dataset/cookpad/test/"
-ckpt_dir = "./model/SE_Inception_resnet_v2_4"
-save_tsv ="./submit/submit_4.tsv"
-save_probs = "./pseudo_probs/pseudo_prob_4.npy"
+ckpt_dir = "./model/SE_Inception_resnet_v2_1"
+save_tsv ="./submit/submit_1.tsv"
+save_probs = "./pseudo_probs/pseudo_prob_1.npy"
 augment_times = 10
 
 # build graph

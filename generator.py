@@ -103,7 +103,16 @@ class DataGenerator():
     def _scale_augmentation(self, image, crop_size, scale_range=(444, 600)):
         scale_size = np.random.randint(*scale_range)
         image = imresize(image, (scale_size, scale_size))
-        image = self._random_crop(image, crop_size)
+        # Deicde top and left bitween 0 to (400-crop_size)
+        top = np.random.randint(0, scale_size - crop_size)
+        left = np.random.randint(0, scale_size - crop_size)
+
+        # Decide bottom and right
+        bottom = top + crop_size
+        right = left + crop_size
+
+        # Crop image using top,bottom,left,right
+        image = image[top:bottom, left:right, :]
         return image
 
 

@@ -60,8 +60,8 @@ def Train(args):
             zoom_range=0.,
             horizontal_flip=True,
             vertical_flip=False,
-            random_crop=False,
-            scale_augmentation=True,
+            random_crop=True,
+            scale_augmentation=False,
             random_erasing=True,
             mixup=False,
             mixup_alpha=0.2,
@@ -181,8 +181,16 @@ def Train(args):
                 args.optimizer,
                 args.val_csv)
         print(train_config)
+        augment_config = "horizontal_flip: {}, random_erasing: {}, scale_augmentation: {}, random_crop: {}, mixup: {}\n".format(
+                args.horizontal_flip,
+                args.random_erasing,
+                args.scale_augmentation,
+                args.random_crop,
+                args.mixup)
+        print(augment_config)
         with open(logs_text, 'a') as f:
             f.write(train_config)
+            f.write(augment_config)
 
         # training
         epoch_learning_rate = init_learning_rate
@@ -357,6 +365,31 @@ if __name__ == '__main__':
         '--weights',
         default=False,
         help='use pretrained weigh')
+    argparser.add_argument(
+        '--horizontal_flip',
+        type=bool,
+        default=False,
+        help='horizontal flip')
+    argparser.add_argument(
+        '--random_erasing',
+        type=bool,
+        default=False,
+        help='random erasing')
+    argparser.add_argument(
+        '--scale_augmentation',
+        type=bool,
+        default=False,
+        help='scale augmentation')
+    argparser.add_argument(
+        '--random_crop',
+        type=bool,
+        default=False,
+        help='random crop')
+    argparser.add_argument(
+        '--mixup',
+        type=bool,
+        default=False,
+        help='mixup')
     args = argparser.parse_args()
 
     Train(args)
