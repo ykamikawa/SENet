@@ -17,7 +17,7 @@ from utils import even_separate
 def TTA(sess, test_lists, dir_path, ckpt_dir, augment_times=1):
     probs = np.zeros((augment_times, len(test_lists), len(category_df)))
     # ckpt config
-    ckpt = tf.train.get_checkpoint_state(ckpt_dir )
+    ckpt = tf.train.get_checkpoint_state(ckpt_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         saver.restore(sess, ckpt.model_checkpoint_path)
     for t in range(augment_times):
