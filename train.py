@@ -335,7 +335,7 @@ if __name__ == '__main__':
         "-s",
         '--input_size',
         type=int,
-        default=336,
+        default=224,
         help='input size')
     argparser.add_argument(
         "-b",
