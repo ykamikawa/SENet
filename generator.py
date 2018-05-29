@@ -115,7 +115,6 @@ class DataGenerator():
         image = image[top:bottom, left:right, :]
         return image
 
-
     def _random_erasing(self, image_org, p=0.5, s=(0.02, 0.4), r=(0.3, 3)):
         # Whether to process
         if np.random.rand() > p:
@@ -146,7 +145,6 @@ class DataGenerator():
         right = left + mask_width
         image[top:bottom, left:right, :].fill(mask_value)
         return image
-
 
     def flow_from_dataframe(self, df, nb_classes, batch_size, image_size, dir_path):
         while True:
