@@ -1,2 +1,2 @@
 # SENet
-Inplementations of Squeeze and Exicitation Networks with tensorflow.
+Inplementations of Squeeze and Excitation Networks with tensorflow.
